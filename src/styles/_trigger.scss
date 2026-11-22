@@ -1,0 +1,49 @@
+// 触发器外观由 Bootstrap 的 .btn / .btn-outline-primary 提供，这里只补交互细节。
+.xq-captcha {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 260px;
+  min-height: 42px;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.xq-captcha.xq-captcha-pulse {
+  position: relative;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 18px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    box-shadow: 0 0 10px rgb(var(--bs-primary-rgb) / 45%);
+    transform: translateY(-50%);
+    pointer-events: none;
+    animation: xq-captcha-pulse 2s ease-out infinite;
+  }
+
+  &::after {
+    animation-delay: 0.5s;
+  }
+}
+
+@keyframes xq-captcha-pulse {
+  from {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-50%) scale(5);
+  }
+}

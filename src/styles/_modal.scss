@@ -1,0 +1,41 @@
+// Bootstrap Modal 布局微调。遮罩、ESC、焦点与滚动锁定均由 Modal JS 负责。
+.xq-captcha-modal {
+  --bs-modal-width: 300px;
+
+  .modal-header,
+  .modal-footer {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .modal-body {
+    padding: 0.75rem;
+  }
+}
+
+// 抖动放在 modal-content 上，避开 Bootstrap 给 modal-dialog 的居中 transform。
+.xq-captcha-modal .modal-content.xq-captcha-shake {
+  animation: xq-captcha-shake 0.4s ease-in-out;
+}
+
+@keyframes xq-captcha-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 360px) {
+  .xq-captcha-modal {
+    --bs-modal-width: 240px;
+  }
+}

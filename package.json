@@ -1,0 +1,63 @@
+{
+  "name": "xq-click-captcha",
+  "version": "1.0.0",
+  "description": "文字点选验证码前端组件（TypeScript + SCSS），配套 xqkeji/xq-app-admin 的 captchadata / captchacheck 接口",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "scripts": {
+    "dev": "vite serve src/",
+    "html": "vite build src/",
+    "build": "npx unbuild && npm run convert && npm run min-js && npm run sass && npm run min-css && npx xq-banner",
+    "convert": "esbuild ./src/ts/index.ts --outfile=./dist/js/xq-click-captcha.js --bundle",
+    "min-js": "uglifyjs ./dist/js/xq-click-captcha.js -m -o ./dist/js/xq-click-captcha.min.js",
+    "sass": "sass ./src/styles/index.scss ./dist/css/xq-click-captcha.css",
+    "min-css": "cleancss -o ./dist/css/xq-click-captcha.min.css ./dist/css/xq-click-captcha.css",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview src/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xqkeji/xq-click-captcha.git"
+  },
+  "keywords": [
+    "HTML5",
+    "JavaScript",
+    "TypeScript",
+    "Captcha",
+    "ClickCaptcha",
+    "文字点选验证码"
+  ],
+  "author": "xqkeji.cn",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://xqkeji.cn/demo/xq-click-captcha",
+  "dependencies": {
+    "bootstrap": "^5.3.3",
+    "xq-captcha-core": "^1.0.0",
+    "xq-util": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "clean-css-cli": "^5.6.2",
+    "esbuild": "^0.27.0",
+    "sass": "^1.80.0",
+    "typescript": "^5.6.0",
+    "uglify-js": "^3.17.4",
+    "unbuild": "^1.1.1",
+    "vite": "^8.0.0",
+    "vite-plugin-xq-cp-dep": "^1.1.1",
+    "vite-plugin-xq-include": "^1.1.1",
+    "xq-banner": "^1.0.10"
+  }
+}
