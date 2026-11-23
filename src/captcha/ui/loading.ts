@@ -23,7 +23,7 @@ export class Loading {
 
     node.replaceChildren(spinner);
     node.classList.remove(CLS.loadingError);
-    node.hidden = false;
+    node.classList.remove(CLS.hidden);
   }
 
   hide(): void {
@@ -35,7 +35,7 @@ export class Loading {
 
     node.replaceChildren();
     node.classList.remove(CLS.loadingError);
-    node.hidden = true;
+    node.classList.add(CLS.hidden);
   }
 
   fail(): void {
@@ -52,7 +52,7 @@ export class Loading {
 
     node.replaceChildren(alert);
     node.classList.add(CLS.loadingError);
-    node.hidden = false;
+    node.classList.remove(CLS.hidden);
   }
 
   private get element(): HTMLElement | null {

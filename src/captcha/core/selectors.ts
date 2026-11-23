@@ -35,6 +35,8 @@ export const CLS = {
   shake: 'xq-captcha-shake',
   /** 加载失败态。 */
   loadingError: 'xq-captcha-loading-error',
+  /** 隐藏工具类：loading 带 d-flex，必须用 d-none 覆盖而非 hidden 属性。 */
+  hidden: 'd-none',
   /** 点击处的扩散波纹。 */
   tapWave: 'xq-captcha-tap-wave',
   /** 单个序号 / 错误徽标。 */

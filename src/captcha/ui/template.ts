@@ -70,10 +70,9 @@ export function buildModal(options: Options): HTMLElement {
 
   const loading = el(
     'div',
-    'xq-captcha-loading position-absolute top-0 start-0 w-100 h-100 z-3 d-flex align-items-center justify-content-center rounded',
+    'xq-captcha-loading position-absolute top-0 start-0 w-100 h-100 z-3 d-flex align-items-center justify-content-center rounded d-none',
     { role: 'status' },
   );
-  loading.hidden = true;
 
   const image = el('canvas', 'xq-captcha-image d-block w-100 h-auto rounded', {
     width: '240',
