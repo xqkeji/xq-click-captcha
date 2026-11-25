@@ -241,15 +241,18 @@ const backend: Transport = USE_REAL_BACKEND
 | `bg_width` / `bg_height` | 画布尺寸，前端据此设置 canvas 的 `width`/`height` 属性 |
 | `char_count` | 需要点击的字符数，缺省按 4 |
 | `hint` | 提示文字，如 `请依次点击：甲 → 乙 → 丙`。**字符坐标即答案，后端从不下发** |
+| `challenge_id` | 本轮图片的挑战标识。组件保存在实例状态里，校验时原样带回；缺失时退回「按会话存一份」的旧路径 |
 
 ### POST `checkUrl`
 
 | 场景 | JSON 请求体字段 |
 | --- | --- |
-| 点选检验 | `points`（数组，元素为 `{x, y, t}`） |
+| 点选检验 | `points`（数组，元素为 `{x, y, t}`）+ `challenge_id` |
 | 二次验证 | `token`（由宿主表单提交，不经组件） |
 
 点击点为 `{x, y, t}`：坐标是**图片像素**，`t` 为相对首次点击的毫秒数（首点为 0），后端据此拒绝机器式瞬时点击。`points` 以 JSON 数组直接放在请求体里，不是字符串化的 JSON。CSS 像素到图片像素的换算由组件按画布实际显示宽度完成，宿主无需关心缩放与 DPR。点选检验由 `/admin/user/captchacheck` 完成。
+
+`challenge_id` 由组件自动附加，宿主不用管。它绑在「当前显示的这张图」上：换图、重置、校验返回 202 时都会清空并重新取图；**校验请求永远不带 `token`**，否则会触发令牌二次校验并把令牌消费掉。
 
 响应规范化为 `{success, token, message}`。除标准形式外还兼容老后端：`code === 200`、`status === 'ok' | 'success'`，以及纯文本 `ok` / `"ok"` / `true` / `1`。`message` 缺失时依次退回 `error` 字段、`failText`。
 
