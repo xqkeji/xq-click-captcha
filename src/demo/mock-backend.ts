@@ -39,7 +39,7 @@ export class MockBackend implements Transport {
     this.pending = null;
   }
 
-  async request(method: HttpMethod, _url: string, data?: Record<string, string>): Promise<string> {
+  async request(method: HttpMethod, _url: string, data?: Record<string, unknown>): Promise<string> {
     await new Promise((resolve) => setTimeout(resolve, LATENCY_MS));
 
     return method === 'GET' ? this.generate() : this.check(data ?? {});
@@ -62,14 +62,14 @@ export class MockBackend implements Transport {
     return JSON.stringify(data);
   }
 
-  private check(data: Record<string, string>): string {
+  private check(data: Record<string, unknown>): string {
     const pending = this.pending;
 
     if (!pending) {
       return fail('验证码已过期，请刷新重试');
     }
 
-    if (data.token !== undefined) {
+    if (typeof data.token === 'string') {
       return this.checkToken(pending, data.token);
     }
 
@@ -114,8 +114,8 @@ export class MockBackend implements Transport {
     return ok(null, '二次验证成功');
   }
 
-  private checkClick(pending: Pending, data: Record<string, string>): string | null {
-    const points: unknown = JSON.parse(data.click_points ?? '[]');
+  private checkClick(pending: Pending, data: Record<string, unknown>): string | null {
+    const points = data.points;
 
     if (!Array.isArray(points) || points.length !== pending.answers.length) {
       return '请点击所有指定字符';

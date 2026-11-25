@@ -191,7 +191,9 @@ const backend: Transport = USE_REAL_BACKEND
   : new MockBackend();
 ```
 
-内置 `FetchTransport` 用 `application/x-www-form-urlencoded` 提交、`credentials: 'same-origin'` 带上同源 Cookie（答案存在后端会话里），超时用 `AbortController` 中断。`HttpError.status` 沿用上游语义：`-1` 超时、`0` 网络错误、其余为 HTTP 状态码。
+内置 `FetchTransport` 用 `application/json` 提交（请求体为 JSON，点选坐标数组直接作为 `points` 传入）、`credentials: 'same-origin'` 带上同源 Cookie（答案存在后端会话里），超时用 `AbortController` 中断。`HttpError.status` 沿用上游语义：`-1` 超时、`0` 网络错误、其余为 HTTP 状态码。
+
+> 后端需按 JSON 请求体解析（PHP 用 `json_decode(file_get_contents('php://input'), true)`，`$_POST` 不会填充）。
 
 ## 实例 API
 
@@ -242,12 +244,12 @@ const backend: Transport = USE_REAL_BACKEND
 
 ### POST `checkUrl`
 
-| 场景 | 表单字段 |
+| 场景 | JSON 请求体字段 |
 | --- | --- |
-| 点选检验 | `click_points`（JSON 数组） |
+| 点选检验 | `points`（数组，元素为 `{x, y, t}`） |
 | 二次验证 | `token`（由宿主表单提交，不经组件） |
 
-点击点为 `{x, y, t}`：坐标是**图片像素**，`t` 为相对首次点击的毫秒数（首点为 0），后端据此拒绝机器式瞬时点击。CSS 像素到图片像素的换算由组件按画布实际显示宽度完成，宿主无需关心缩放与 DPR。点选检验由 `/admin/user/captchacheck` 完成。
+点击点为 `{x, y, t}`：坐标是**图片像素**，`t` 为相对首次点击的毫秒数（首点为 0），后端据此拒绝机器式瞬时点击。`points` 以 JSON 数组直接放在请求体里，不是字符串化的 JSON。CSS 像素到图片像素的换算由组件按画布实际显示宽度完成，宿主无需关心缩放与 DPR。点选检验由 `/admin/user/captchacheck` 完成。
 
 响应规范化为 `{success, token, message}`。除标准形式外还兼容老后端：`code === 200`、`status === 'ok' | 'success'`，以及纯文本 `ok` / `"ok"` / `true` / `1`。`message` 缺失时依次退回 `error` 字段、`failText`。
 

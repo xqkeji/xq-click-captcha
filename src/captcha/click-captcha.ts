@@ -46,7 +46,7 @@ class ClickBehaviour extends CaptchaBehaviour {
     this.hint = new Hint(this.ctx.dom, this.ctx.options as Options);
     this.loading = new Loading(this.ctx.dom);
     this.click = new ClickHandler(this.ctx.dom, this.ctx.state, this.markers, this.ripple, (points) => {
-      this.ctx.submit({ click_points: JSON.stringify(points) });
+      this.ctx.submit({ points });
     });
   }
 
@@ -101,6 +101,10 @@ class ClickBehaviour extends CaptchaBehaviour {
       console.error('xq-click-captcha: 验证码图片加载失败', error);
       this.loading.fail();
     }
+  }
+
+  override onDataError(): void {
+    this.loading.fail();
   }
 
   markFailures(): void {
