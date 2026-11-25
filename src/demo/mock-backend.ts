@@ -9,6 +9,8 @@ const HEIGHT = 150;
 const CHAR_COUNT = 4;
 const CLICK_TOLERANCE = 25;
 const LATENCY_MS = 120;
+/** 同时保留多少轮挑战（模拟双击 init / 多标签页时旧图仍可校验）。 */
+const KEEP_CHALLENGES = 5;
 
 interface Pending {
   answers: { x: number; y: number }[];
@@ -18,25 +20,34 @@ interface Pending {
 }
 
 function fail(message: string): string {
-  return JSON.stringify({ success: false, token: null, message });
+  return JSON.stringify({ code: 202, message, token: null });
 }
 
 function ok(token: string | null, message: string): string {
-  return JSON.stringify({ success: true, token, message });
+  return JSON.stringify({ code: 200, message, token });
+}
+
+function newChallengeId(): string {
+  return Math.random().toString(16).slice(2, 10) + Date.now().toString(16).slice(-8);
 }
 
 /**
- * 演示页的本地后端：实现与 xq-app-admin 的 /admin/user/captchadata、/admin/user/captchacheck 相同的请求/响应契约，
+ * 演示页的本地后端：实现与 xqkeji 扩展的 captchadata / captchacheck 相同的契约，
  * 但答案就存在浏览器内存里，因此毫无安全性可言，仅用于跑通组件。
- * 接真实后端时把 transport 换回内置 fetch 即可。
+ *
+ * 与真实服务端对齐的两点：
+ * 1. 每轮出图都带 challenge_id，答案按 id 存，校验时按 id 取 —— 旧图拿旧 id 仍可校验；
+ * 2. 不带 challenge_id 时退回「最近一轮」的旧路径，用于灰度兼容。
  */
 export class MockBackend implements Transport {
   private mode: MockMode = 'dual';
-  private pending: Pending | null = null;
+  private readonly challenges = new Map<string, Pending>();
+  private latestId: string | null = null;
 
   configure(mode: MockMode): void {
     this.mode = mode;
-    this.pending = null;
+    this.challenges.clear();
+    this.latestId = null;
   }
 
   async request(method: HttpMethod, _url: string, data?: Record<string, unknown>): Promise<string> {
@@ -47,12 +58,22 @@ export class MockBackend implements Transport {
 
   private generate(): string {
     const image = renderClick(WIDTH, HEIGHT, CHAR_COUNT);
-    this.pending = { answers: image.answers, token: null, answered: false, used: false };
+    const challengeId = newChallengeId();
+
+    this.challenges.set(challengeId, {
+      answers: image.answers,
+      token: null,
+      answered: false,
+      used: false,
+    });
+    this.latestId = challengeId;
+    this.trim();
 
     const data: CaptchaData = {
       success: true,
       type: 'click',
       image_base64: image.dataUri,
+      challenge_id: challengeId,
       bg_width: WIDTH,
       bg_height: HEIGHT,
       char_count: CHAR_COUNT,
@@ -63,14 +84,16 @@ export class MockBackend implements Transport {
   }
 
   private check(data: Record<string, unknown>): string {
-    const pending = this.pending;
+    // 带 token 的是宿主表单提交后的二次校验（dual 模式），令牌用过即毁。
+    // 组件自身的校验请求不会带 token（见 core 的 buildCheckPayload）。
+    if (typeof data.token === 'string') {
+      return this.checkToken(data.token);
+    }
+
+    const pending = this.resolve(data);
 
     if (!pending) {
       return fail('验证码已过期，请刷新重试');
-    }
-
-    if (typeof data.token === 'string') {
-      return this.checkToken(pending, data.token);
     }
 
     // backend_only：不带令牌的表单提交凭会话已验证状态幂等放行，与后端口径一致。
@@ -95,27 +118,62 @@ export class MockBackend implements Transport {
       return ok(null, '验证成功');
     }
 
-    pending.token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    pending.token = newChallengeId();
 
     return ok(pending.token, '验证成功，请完成后续操作');
   }
 
-  private checkToken(pending: Pending, token: string): string {
-    if (!pending.token || pending.token !== token) {
-      return fail('验证令牌无效');
+  /** 宿主表单提交后的二次校验：令牌用过即毁。 */
+  private checkToken(token: string): string {
+    for (const pending of this.challenges.values()) {
+      if (pending.token !== token) {
+        continue;
+      }
+
+      if (pending.used) {
+        return fail('验证令牌已被使用，请重新验证');
+      }
+
+      pending.used = true;
+
+      return ok(null, '二次验证成功');
     }
 
-    if (pending.used) {
-      return fail('验证令牌已被使用，请重新验证');
-    }
+    return fail('验证令牌无效');
+  }
 
-    pending.used = true;
+  /**
+   * 仅演示页调试用：读某一轮的真实答案。
+   * 真实后端的答案永远不会下发，这里只是为了让本地验收脚本能构造「正确的一次点选」。
+   */
+  peek(challengeId: string): { x: number; y: number }[] | null {
+    const pending = this.challenges.get(challengeId);
 
-    return ok(null, '二次验证成功');
+    return pending ? pending.answers.map((answer) => ({ x: answer.x, y: answer.y })) : null;
+  }
+
+  /** 有 challenge_id 就精确取，没有则退回最近一轮（灰度兼容）。 */
+  private resolve(data: Record<string, unknown>): Pending | null {
+    const id =
+      typeof data.challenge_id === 'string' && data.challenge_id !== ''
+        ? data.challenge_id
+        : this.latestId;
+
+    return id ? (this.challenges.get(id) ?? null) : null;
   }
 
   private checkClick(pending: Pending, data: Record<string, unknown>): string | null {
-    const points = data.points;
+    // 服务端对字段名做了兼容，这里也跟着兼容 points / click_points，数组或 JSON 字符串都收。
+    const raw = data.points ?? data.click_points;
+    let points: unknown = raw;
+
+    if (typeof points === 'string') {
+      try {
+        points = JSON.parse(points);
+      } catch {
+        return '点击数据无效，请重试';
+      }
+    }
 
     if (!Array.isArray(points) || points.length !== pending.answers.length) {
       return '请点击所有指定字符';
@@ -123,8 +181,9 @@ export class MockBackend implements Transport {
 
     for (const [index, point] of points.entries()) {
       const answer = pending.answers[index];
-      const x = Number(point?.x);
-      const y = Number(point?.y);
+      const record = (point ?? {}) as Record<string, unknown>;
+      const x = Number(record.x);
+      const y = Number(record.y);
 
       if (!Number.isFinite(x) || !Number.isFinite(y)) {
         return '点击数据无效，请重试';
@@ -136,5 +195,17 @@ export class MockBackend implements Transport {
     }
 
     return null;
+  }
+
+  private trim(): void {
+    while (this.challenges.size > KEEP_CHALLENGES) {
+      const oldest = this.challenges.keys().next().value;
+
+      if (oldest === undefined || oldest === this.latestId) {
+        break;
+      }
+
+      this.challenges.delete(oldest);
+    }
   }
 }
